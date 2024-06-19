@@ -92,6 +92,84 @@ def create_dataset_solap(path, dataset_name='dataset_intensidad.npz', solap_init
     print('Dataset guardado como:', dataset_name)
 
 
+
+def create_dataset(path, dataset_name='dataset_inicial.npz'):
+    """
+    Esta función procesa archivos combinando sus partes reales e imaginarias
+    para formar tomogramas, se calcula la intesidad.
+    Finalmente, guarda estos datos en un archivo .npz.
+
+    Entradas:
+    - path (str): Ruta del directorio que contiene los archivos reales e imaginarios.
+    - dataset_name (str, opcional): Nombre del archivo .npz donde se guardarán los datos. Por defecto esta 'dataset_intensidad.npz'.
+    
+    Salidas:
+    - Un archivo .npz que contiene dos arrays: inputs_intensidad y targets_intensidad, correspondientes
+      a las entradas y objetivos del modelo.
+    """
+    
+    file_list = os.listdir(path)
+    tom1_real_files = sorted([file for file in file_list if file.startswith('tom1_real')])
+    tom1_imag_files = sorted([file for file in file_list if file.startswith('tom1_imag')])
+    tom2_real_files = sorted([file for file in file_list if file.startswith('tom2_real')])
+    tom2_imag_files = sorted([file for file in file_list if file.startswith('tom2_imag')])
+    
+    inputs_original = []
+    targets_original = []
+    inputs_ampli = []
+    targets_ampli = []
+    const = 1e-9  
+
+    for filename_tom1_real, filename_tom1_imag, filename_tom2_real, filename_tom2_imag in zip(tom1_real_files, tom1_imag_files, tom2_real_files, tom2_imag_files):
+        z, x, y = [int(re.search(f'{dim}=([0-9]+)', filename_tom1_real).group(1)) for dim in ['z', 'x', 'y']]
+
+        tom1_real = np.fromfile(join(path, filename_tom1_real), dtype='float32').reshape((z, x, y), order='F')
+        tom1_imag = np.fromfile(join(path, filename_tom1_imag), dtype='float32').reshape((z, x, y), order='F')
+        
+        tom2_real = np.fromfile(join(path, filename_tom2_real), dtype='float32').reshape((z, x, y), order='F')
+        tom2_imag = np.fromfile(join(path, filename_tom2_imag), dtype='float32').reshape((z, x, y), order='F')
+
+        tom1 = tom1_real + 1j * tom1_imag
+        tom2 = tom2_real + 1j * tom2_imag
+
+
+        for i in range(y):
+            inputs_original.append(tom1[:, :, i])
+            targets_original.append(tom2[:, :, i])
+
+            transformed_input = 20 * np.log10(np.abs(tom1[:, :, i]) + const)
+            transformed_target = 20 * np.log10(np.abs(tom2[:, :, i]) + const)
+            inputs_ampli.append(transformed_input)
+            targets_ampli.append(transformed_target)
+
+    inputs_amplitud = np.expand_dims(np.array(inputs_ampli, dtype='float32'), -1)
+    targets_amplitud = np.expand_dims(np.array(targets_ampli, dtype='float32'), -1)
+
+    savez_compressed(dataset_name, inputs_amplitud=inputs_amplitud, targets_amplitud=targets_amplitud)
+    print('Dataset guardado como:', dataset_name)
+
+create_dataset(r'C:\Users\Vale\Desktop\tdg\validacion', 'dataset_inicial.npz')
+
+
+
+def dataset_cyclegan(dataset_path, modified_dataset_name='dataset_cyclegan.npz'):
+
+    data = np.load(dataset_path)
+    
+    dominio_1 = data['arr_0']  
+    dominio_2 = data['arr_1']  
+    
+    np.random.shuffle(dominio_2)
+    
+    # print('Shape of dominio_1:', dominio_1.shape)
+    # print('Shape of dominio_2:', dominio_2.shape)
+    
+    np.savez_compressed(modified_dataset_name, arr_0=dominio_1, arr_1=dominio_2)
+    # print('Modified dataset saved as:', modified_dataset_name)
+
+
+dataset_cyclegan('dataset_intensidad.npz', 'dataset_cyclegan.npz')
+
 #########################################
 
 def tom_completo(path):
