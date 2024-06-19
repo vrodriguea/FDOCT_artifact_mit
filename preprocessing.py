@@ -161,7 +161,6 @@ def dataset_cyclegan(dataset_path, modified_dataset_name='dataset_cyclegan.npz')
     
     np.random.shuffle(dominio_2)
     
-    # print('Shape of dominio_1:', dominio_1.shape)
     # print('Shape of dominio_2:', dominio_2.shape)
     
     np.savez_compressed(modified_dataset_name, arr_0=dominio_1, arr_1=dominio_2)
