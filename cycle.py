@@ -1,5 +1,4 @@
 #%%
-# example of training a cyclegan on the horse2zebra dataset
 from random import random
 from numpy import load
 from numpy import zeros
@@ -14,10 +13,13 @@ from tensorflow.keras.layers import Conv2DTranspose
 from tensorflow.keras.layers import LeakyReLU
 from tensorflow.keras.layers import Activation
 from tensorflow.keras.layers import Concatenate
-from tensorflow.keras.layers import BatchNormalization
 from matplotlib import pyplot
 from tensorflow.keras.optimizers import Adam
- #%%
+
+#instance normalization
+from tensorflow.keras.layers import BatchNormalization
+
+#%%
 def define_discriminator(image_shape):
     # weight initialization
     init = RandomNormal(stddev=0.02)
@@ -135,7 +137,7 @@ def load_real_samples(filename):
     # load the dataset
     data = load(filename)
     # unpack arrays
-    X1, X2 = data['arr_0'], data['arr_1']
+    X1, X2 = data['inputs_amplitud'], data['targets_amplitud']
     # scale from [0,255] to [-1,1]
     X1 = (X1 - 127.5) / 127.5
     X2 = (X2 - 127.5) / 127.5
@@ -170,7 +172,7 @@ def save_models(step, g_model_AtoB, g_model_BtoA):
     print('>Saved: %s and %s' % (filename1, filename2))
  
 # generate samples and save as a plot and save the model
-def summarize_performance(step, g_model, trainX, name, n_samples=5):
+def summarize_performance(step, g_model, trainX, name, n_samples=5): 
         # select a sample of input images
         X_in, _ = generate_real_samples(trainX, n_samples, 0)
         # generate translated images
@@ -257,13 +259,87 @@ def train(d_model_A, d_model_B, g_model_AtoB, g_model_BtoA, c_model_AtoB, c_mode
         if (i+1) % (bat_per_epo * 5) == 0:
             # save the models
             save_models(i, g_model_AtoB, g_model_BtoA)
- 
+ #%%
+#data training
+
+from os import listdir
+from numpy import asarray
+from numpy import vstack
+from keras.preprocessing.image import img_to_array
+from keras.preprocessing.image import load_img
+from matplotlib import pyplot as plt
+import numpy as np
+
+
 
 #%%
-# load image data
-dataset = load_real_samples('dataset_intensidad.npz')
-print('Loaded', dataset[0].shape, dataset[1].shape)
-# define input shape based on the loaded dataset
+
+
+# def load_images(path, size=(256,256)):
+# 	data_list = list()
+# 	# enumerate filenames in directory, assume all are images
+# 	for filename in listdir(path):
+# 		# load and resize the image
+# 		pixels = load_img(path + filename, target_size=size)
+# 		# convert to numpy array
+# 		pixels = img_to_array(pixels)
+# 		# store
+# 		data_list.append(pixels)
+# 	return asarray(data_list)
+
+
+# # dataset path
+# path = 'monet2photo/'
+
+# # load dataset A - Monet paintings
+# dataA_all = load_images(path + 'trainA/')
+# print('Loaded dataA: ', dataA_all.shape)
+
+
+# # load dataset B - Photos 
+# dataB_all = load_images(path + 'trainB/')
+# print('Loaded dataB: ', dataB_all.shape)
+
+
+#%%
+import numpy as np
+
+def load_images_from_npz(npz_path, dataset_key):
+    # Cargar el archivo npz
+    data = np.load(npz_path)
+    # Extraer el conjunto de datos específico usando su clave
+    data_all = data[dataset_key]
+    # Si es necesario, aquí podrías redimensionar las imágenes a 'size', pero eso requeriría procesamiento adicional
+    # Por simplicidad, asumimos que las imágenes ya están en el tamaño deseado
+    return data_all
+
+# Ruta al archivo npz
+npz_path = 'dataset_nos.npz'
+
+# Cargar dataset A - Pinturas de Monet
+dataA = load_images_from_npz(npz_path, 'train_dominio_1')
+print('Loaded dataA: ', dataA.shape)
+
+# Cargar dataset B - Fotos
+dataB = load_images_from_npz(npz_path, 'train_dominio_2')
+print('Loaded dataB: ', dataB.shape)
+
+data = [dataA, dataB]
+
+print('Loaded', data[0].shape, data[1].shape)
+
+
+def preprocess_data(data):
+	# load compressed arrays
+	# unpack arrays
+	X1, X2 = data[0], data[1]
+	# scale from [0,255] to [-1,1]
+	X1 = (X1 - 127.5) / 127.5
+	X2 = (X2 - 127.5) / 127.5
+	return [X1, X2]
+
+dataset = preprocess_data(data)
+
 image_shape = dataset[0].shape[1:]
 # generator: A -> B
 g_model_AtoB = define_generator(image_shape)
@@ -278,26 +354,55 @@ c_model_AtoB = define_composite_model(g_model_AtoB, d_model_B, g_model_BtoA, ima
 # composite: B -> A -> [real/fake, B]
 c_model_BtoA = define_composite_model(g_model_BtoA, d_model_A, g_model_AtoB, image_shape)
 
-# print model summaries
-print("Summary of G_AtoB")
-g_model_AtoB.summary()
-print("Summary of G_BtoA")
-g_model_BtoA.summary()
-print("Summary of D_A")
-d_model_A.summary()
-print("Summary of D_B")
-d_model_B.summary()
-print("Summary of Composite AtoB")
-c_model_AtoB.summary()
-print("Summary of Composite BtoA")
-c_model_BtoA.summary()
-
-
 
 #%%
+train(d_model_A, d_model_B, g_model_AtoB, g_model_BtoA, c_model_AtoB, c_model_BtoA,
+       dataset)
 
-# train models
 
 
-train(d_model_A, d_model_B, g_model_AtoB, g_model_BtoA, c_model_AtoB, c_model_BtoA, dataset)
+
+# #%%
+# # load image data
+# dataset = load_real_samples('dataset_inicial.npz')
+# print('Loaded', dataset[0].shape, dataset[1].shape)
+# # define input shape based on the loaded dataset
+# image_shape = dataset[0].shape[1:]
+# # generator: A -> B
+# g_model_AtoB = define_generator(image_shape)
+# # generator: B -> A
+# g_model_BtoA = define_generator(image_shape)
+# # discriminator: A -> [real/fake]
+# d_model_A = define_discriminator(image_shape)  
+# # discriminator: B -> [real/fake]
+# d_model_B = define_discriminator(image_shape)
+# # composite: A -> B -> [real/fake, A]
+# c_model_AtoB = define_composite_model(g_model_AtoB, d_model_B, g_model_BtoA, image_shape)
+# # composite: B -> A -> [real/fake, B]
+# c_model_BtoA = define_composite_model(g_model_BtoA, d_model_A, g_model_AtoB, image_shape)
+
+# # # print model summaries
+# # print("Summary of G_AtoB")
+# # g_model_AtoB.summary()
+# # print("Summary of G_BtoA")
+# # g_model_BtoA.summary()
+# # print("Summary of D_A")
+# # d_model_A.summary()
+# # print("Summary of D_B")
+# # d_model_B.summary()
+# # print("Summary of Composite AtoB")
+# # c_model_AtoB.summary()
+# # print("Summary of Composite BtoA")
+# # c_model_BtoA.summary()
+
+
+
+# #%%
+
+# # train models
+
+
+# train(d_model_A, d_model_B, g_model_AtoB, g_model_BtoA, c_model_AtoB, c_model_BtoA, dataset)
+# # %%
+
 # %%

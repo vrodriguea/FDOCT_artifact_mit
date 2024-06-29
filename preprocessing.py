@@ -150,6 +150,37 @@ def create_dataset(path, dataset_name='dataset_inicial.npz'):
 
 create_dataset(r'C:\Users\Vale\Desktop\tdg\validacion', 'dataset_inicial.npz')
 
+#%%
+import numpy as np
+
+def create_combined_dataset(dataset_path, test_ratio=0.2, output_filename='dataset_nos.npz'):
+    # Cargar los datos
+    data = np.load(dataset_path)
+    dominio_1 = data['arr_0']
+    dominio_2 = data['arr_1']
+
+    # Mezclar aleatoriamente
+    np.random.shuffle(dominio_1)
+    np.random.shuffle(dominio_2)
+
+    # Calcular el tamaño del conjunto de test
+    test_size_1 = int(len(dominio_1) * test_ratio)
+    test_size_2 = int(len(dominio_2) * test_ratio)
+
+    # Dividir los conjuntos
+    test_dominio_1 = dominio_1[:test_size_1]
+    train_dominio_1 = dominio_1[test_size_1:]
+    test_dominio_2 = dominio_2[:test_size_2]
+    train_dominio_2 = dominio_2[test_size_2:]
+
+    # Guardar los conjuntos en un solo archivo
+    np.savez_compressed(output_filename, train_dominio_1=train_dominio_1, test_dominio_1=test_dominio_1, train_dominio_2=train_dominio_2, test_dominio_2=test_dominio_2)
+    print(f'Dataset combinado guardado como: {output_filename}')
+
+create_combined_dataset('dataset_intensidad.npz', 0.2, 'dataset_nos.npz')
+#%%
+
+
 
 
 def dataset_cyclegan(dataset_path, modified_dataset_name='dataset_cyclegan.npz'):
