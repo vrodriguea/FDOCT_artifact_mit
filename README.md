@@ -15,4 +15,7 @@ El objetivo de este proyecto es eliminar las imágenes espejo presentes en las t
     - 
 
 2. **Modelos**:
-    - 
+        - **Modelos GAN**: Redes Generativas Antagónicas utilizadas para mejorar la calidad de las imágenes eliminando artefactos.
+
+    ### Experimentos con Modelos
+
