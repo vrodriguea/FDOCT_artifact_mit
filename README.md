@@ -15,6 +15,6 @@ El objetivo de este proyecto es eliminar las imágenes espejo presentes en las t
     - 
 
 2. **Modelos**:
-
+    - 
      **Experimentos con Modelos**
 
