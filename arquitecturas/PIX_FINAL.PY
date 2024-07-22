@@ -7,14 +7,15 @@ from keras.initializers import RandomNormal
 from matplotlib import pyplot as pyplots
 from keras.optimizers import Adam
 from numpy.random import randint
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as pyplot
 from keras.models import Model
 from os.path import join
 from os import listdir
 import numpy as np
 import re
 import os
-
+import matplotlib.pyplot as plt
+import matplotlib.pyplot as pyplot
 
 #%%%
 
@@ -221,7 +222,7 @@ def load_real_samples(filename):
 	- samples: Una lista que contiene las muestras reales escaladas.
 	"""
 	data = load(filename)
-	X1, X2 = data['arr_0'], data['arr_1']
+	X1, X2 = data['inputs_amplitud'], data['targets_amplitud']
 	
 	# Escala de [0,255] a [-1,1]
 	X1 = (X1 - 127.5) / 127.5
@@ -280,13 +281,12 @@ def summarize_performance(step, g_model, dataset, n_samples=3):
 	"""
     Resumen del rendimiento del modelo generador.
     
-    Parámetros:
     - step: Paso de entrenamiento actual.
     - g_model: Modelo generador.
-    - dataset: Conjunto de datos que contiene pares de imágenes (realA, realB).
-    - n_samples: Número de muestras para generar y visualizar.
+    - dataset: Conjunto de datos que contiene pares de  (realA, realB).
+    - n_samples: NÃºmero de muestras para generar y visualizar.
     """
-    # Selecciona una muestra de imágenes de entrada
+    # Selecciona una muestra de  de entrada
 	[X_realA, X_realB], _ = generate_real_samples(dataset, n_samples, 1)
 	## Genera un lote de muestras falsas
 	X_fakeB, _ = generate_fake_samples(g_model, X_realA, 1)
@@ -294,7 +294,7 @@ def summarize_performance(step, g_model, dataset, n_samples=3):
 	X_realA = (X_realA + 1) / 2.0
 	X_realB = (X_realB + 1) / 2.0
 	X_fakeB = (X_fakeB + 1) / 2.0
-	# Grafica las imágenes de entrada, 
+	# Grafica las  de entrada, 
 	for i in range(n_samples):
 		pyplot.subplot(3, n_samples, 1 + i)
 		pyplot.axis('off')
@@ -313,7 +313,7 @@ def summarize_performance(step, g_model, dataset, n_samples=3):
 		pyplot.title('Real B' if i == 0 else '')
 		pyplot.imshow(X_realB[i])
 		
-    # Guarda la gráfica en un archivo
+    # Guarda la  en un archivo
 	filename1 = 'plot_NORMA2_%06d.png' % (step+1)
 	pyplot.savefig(filename1)
 	pyplot.close()
@@ -324,80 +324,47 @@ def summarize_performance(step, g_model, dataset, n_samples=3):
 
 
 
+
 def train(d_model, g_model, gan_model, dataset, n_epochs=5, n_batch=1):
-	
-    """
-    Entrena modelos GAN: Discriminador (d_model), Generador (g_model) y el modelo GAN combinado (gan_model).
-    
-    Entradas:
-    - d_model: Modelo del discriminador, que intenta distinguir entre imágenes reales y generadas.
-    - g_model: Modelo del generador, que intenta generar imágenes que parezcan reales.
-    - gan_model: Modelo combinado de GAN que actualiza el generador basándose en el desempeño del discriminador.
-    - dataset: Tupla de datos (trainA, trainB), donde trainA son las imágenes de entrada y trainB son las imágenes objetivo.
-    - n_epochs: Número de épocas para el entrenamiento.
-    - n_batch: Tamaño del lote para el entrenamiento.
-    
-    Salidas:
-    Esta función no retorna valores explícitamente, pero realiza varias acciones:
-    - Entrena los modelos d_model, g_model y gan_model con los datos proporcionados.
-    - Imprime el desempeño de los modelos en cada iteración y en puntos específicos del entrenamiento.
-    - Guarda los modelos y genera gráficas de las pérdidas durante el entrenamiento.
-    """
-    # determine the output square shape of the discriminator
     n_patch = d_model.output_shape[1]
-    # dataset
     trainA, trainB = dataset
-	
-    # Calcula el número de lotes por época de entrenamiento
     bat_per_epo = int(len(trainA) / n_batch)
-    # Calcula el número total de iteraciones de entrenamiento
-    d_loss_list, g_loss_list = [], []
+    d_loss_epoch, g_loss_epoch = [], []
     n_steps = bat_per_epo * n_epochs
-    d_loss_accum, g_loss_accum = [], []
 
-    # manually enumerate epochs
     for i in range(n_steps):
-        # select a batch of real samples
         [X_realA, X_realB], y_real = generate_real_samples(dataset, n_batch, n_patch)
-        # generate a batch of fake samples
         X_fakeB, y_fake = generate_fake_samples(g_model, X_realA, n_patch)
-        # update discriminator for real samples
         d_loss1 = d_model.train_on_batch([X_realA, X_realB], y_real)
-        # update discriminator for generated samples
         d_loss2 = d_model.train_on_batch([X_realA, X_fakeB], y_fake)
-        # update the generator
-        results = gan_model.train_on_batch(X_realA, [y_real, X_realB])# summarize performance
-        g_loss = results[0]
-        print('>%d, d1[%.3f] d2[%.3f] g[%.3f]' % (i+1, d_loss1, d_loss2, g_loss))
-        # summarize model performance
-        if (i+1) % (bat_per_epo * 10) == 0:
-            summarize_performance(i, g_model, dataset)
-        # Store losses
-        d_loss_list.append((d_loss1 + d_loss2) / 2)
-        g_loss_list.append(g_loss)
-		
-         # Al final de cada época, calcula el promedio de las pérdidas acumuladas y reinicia las listas
-        if (i+1) % bat_per_epo == 0:
-            epoch_d_loss = sum(d_loss_accum) / len(d_loss_accum)
-            epoch_g_loss = sum(g_loss_accum) / len(g_loss_accum)
-            d_loss_list.append(epoch_d_loss)
-            g_loss_list.append(epoch_g_loss)
-            d_loss_accum, g_loss_accum = [], []  # Reinicia las listas para la próxima época
+        g_loss_results = gan_model.train_on_batch(X_realA, [y_real, X_realB])
+        g_loss = g_loss_results[0]  
 
-                
-    # cambiar por epocas 
-    plt.plot(d_loss_list, label='Discriminator Loss')
-    plt.plot(g_loss_list, label='Generator Loss')
-    plt.xlabel('Iterations')
-    plt.ylabel('Loss')
-    plt.title('Training Losses')
-    plt.legend()
+        if i % bat_per_epo == 0:
+            d_losses, g_losses = [], []
+        d_losses.append((d_loss1 + d_loss2) / 2)
+        g_losses.append(g_loss)
+
+        if (i + 1) % bat_per_epo == 0:
+            d_loss_epoch.append(sum(d_losses) / len(d_losses))
+            g_loss_epoch.append(sum(g_losses) / len(g_losses))
+            current_epoch = (i + 1) // bat_per_epo
+            print('Epoch %d, d_loss: %.3f, g_loss: %.3f' % (current_epoch, d_loss_epoch[-1], g_loss_epoch[-1]))
+            
+            if current_epoch % 2 == 0:
+                summarize_performance(current_epoch * bat_per_epo, g_model, dataset)
     
-    plt.savefig('training_losses_pix_norm2.png')    
+    plt.plot(d_loss_epoch, label='Discriminator Loss')
+    plt.plot(g_loss_epoch, label='Generator Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training Losses by Epoch')
+    plt.legend()
+    plt.savefig('training_losses_by_epoch.png')
     plt.clf()
 
 
-dataset = load_real_samples('dataset_intensidad.npz')
+dataset = load_real_samples('primer_dataset.npz')
 print('Loaded', dataset[0].shape, dataset[1].shape)
 image_shape = dataset[0].shape[1:]
 d_model = define_discriminator(image_shape)
@@ -405,4 +372,8 @@ g_model = define_generator(image_shape)
 gan_model = define_gan(g_model, d_model, image_shape)
 
 train(d_model, g_model, gan_model, dataset)
-#%%
+ #%%
+
+
+
+# %%
