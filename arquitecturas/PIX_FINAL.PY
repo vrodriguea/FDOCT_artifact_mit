@@ -20,132 +20,66 @@ import matplotlib.pyplot as pyplot
 #%%%
 
 def define_discriminator(image_shape):
-	"""
-    Define y compila un modelo discriminador para una GAN.
 
-    Este modelo toma dos imágenes como entrada: una imagen fuente y una imagen objetivo (o su copia espejo),
-    y aprende a distinguir entre combinaciones reales y falsas de estas imágenes.
-    La salida es un mapa de características que indica las partes de la imagen que son reales o falsas.
 
-    Parámetros:
-    - image_shape: Una tupla que define la forma de las imágenes de entrada. Debe ser en el formato (altura, anchura, canales).
-
-    Retorna:
-    - model: Un modelo de Keras compilado que actúa como el discriminador en una GAN
-	
-    """
-
-    # Inicialización de pesos
 	init = RandomNormal(stddev=0.02)
-	# imagen muestra con imagen espejo 
 	in_src_image = Input(shape=image_shape)
-	# imagen sin copia
 	in_target_image = Input(shape=image_shape)
 	
-    # Concatenación de imágenes a lo largo del eje de los canales
 	merged = Concatenate()([in_src_image, in_target_image])
 	
-    # Bloque de convolución C64
 	d = Conv2D(64, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(merged)
 	d = LeakyReLU(alpha=0.2)(d)
-	# C128
 	d = Conv2D(128, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d)
 	d = BatchNormalization()(d)
 	d = LeakyReLU(alpha=0.2)(d)
-	# C256
 	d = Conv2D(256, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d)
 	d = BatchNormalization()(d)
 	d = LeakyReLU(alpha=0.2)(d)
-	# C512
 	d = Conv2D(512, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d)
 	d = BatchNormalization()(d)
 	d = LeakyReLU(alpha=0.2)(d)
 	
-	# Capa de salida,
 	d = Conv2D(512, (4,4), padding='same', kernel_initializer=init)(d)
 	d = BatchNormalization()(d)
 	d = LeakyReLU(alpha=0.2)(d)
-    # Salida binaria que indica si las imágenes son reales o falsas
 	d = Conv2D(1, (4,4), padding='same', kernel_initializer=init)(d)
 	patch_out = Activation('sigmoid')(d)
-    # Definición del modelo
+
 	model = Model([in_src_image, in_target_image], patch_out)
 	
-	# Compilación del modelo
 	opt = Adam(learning_rate=0.0002, beta_1=0.5)
 	model.compile(loss='binary_crossentropy', optimizer=opt, loss_weights=0.5)
 	return model
 
 
-# Encoder 
 def define_encoder_block(layer_in, n_filters, batchnorm=True):
-	"""
-    Define un bloque codificador para una CNN.
-    
-    Parámetros:
-    - layer_in: Capa de entrada para el bloque codificador.
-    - n_filters: Número de filtros para la capa Conv2D.
-    - batchnorm: Booleano, indica si incluir normalización por lotes.
-    
-    Retorna:
-    - g: La capa de salida del bloque codificador.
-    """
+
 	init = RandomNormal(stddev=0.02)
-	# Downsampling layer
 	g = Conv2D(n_filters, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(layer_in)
-    # Normalización por lotes
 	if batchnorm:
 		g = BatchNormalization()(g, training=True)
-	# Activación Leaky ReLU
 	g = LeakyReLU(alpha=0.2)(g)
 	return g
 
 
 
-# Decoder
 def decoder_block(layer_in, skip_in, n_filters, dropout=True):
-	"""
-    Define un bloque decodificador para una cnn.
-    
-    Parámetros:
-    - layer_in: Capa de entrada para el bloque decodificador.
-    - skip_in: Capa para la conexión de salto.
-    - n_filters: Número de filtros para la capa Conv2DTranspose.
-    - dropout: Booleano, indica si incluir capa de abandono.
-    
-    Retorna:
-    - g: La capa de salida del bloque decodificador.
-    """
+
 	init = RandomNormal(stddev=0.02)
-	# Upsampling layer
 	g = Conv2DTranspose(n_filters, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(layer_in)
-	# Batch normalization
 	g = BatchNormalization()(g, training=True)
-	# Dropout
 	if dropout:
 		g = Dropout(0.5)(g, training=True)
-	# Uso de skip connection
 	g = Concatenate()([g, skip_in])
-    # Activación ReLU
 	g = Activation('relu')(g)
 	return g
 
-# Genrador
 def define_generator(image_shape=(256,256,1)):
-	"""
-    Define el modelo generador para la red GAN.
-    
-    Parámetros:
-    - image_shape: Forma de la imagen de entrada.
-    
-    Retorna:
-    - model: El modelo generador compilado.
-    """
+
 
 	init = RandomNormal(stddev=0.02)
-	# imagen de entrada
 	in_image = Input(shape=image_shape)
-	# Encoder
 	e1 = define_encoder_block(in_image, 64, batchnorm=False)
 	e2 = define_encoder_block(e1, 128)
 	e3 = define_encoder_block(e2, 256)
@@ -154,12 +88,10 @@ def define_generator(image_shape=(256,256,1)):
 	e6 = define_encoder_block(e5, 512)
 	e7 = define_encoder_block(e6, 512)
 	
-	# Cuello de botella, sin normalización por lotes y activación ReLU
 	b = Conv2D(512, (4,4), strides=(2,2), padding='same',
 			 kernel_initializer=init)(e7)
 	b = Activation('relu')(b)
 	
-	# Decoder
 	d1 = decoder_block(b, e7, 512)
 	d2 = decoder_block(d1, e6, 512)
 	d3 = decoder_block(d2, e5, 512)
@@ -168,63 +100,35 @@ def define_generator(image_shape=(256,256,1)):
 	d6 = decoder_block(d5, e2, 128, dropout=False)
 	d7 = decoder_block(d6, e1, 64, dropout=False)
 	
-    # Imagen de salida
 	out_image = Conv2DTranspose(1, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d7)
-	out_image = Activation('tanh')(out_image)# Activación tanh
-	
-	# Modelo
+	out_image = Activation('tanh')(out_image)
+
 	model = Model(in_image, out_image)
 	return model
 
 
-# define the combined generator and discriminator model, for updating the generator
 def define_gan(g_model, d_model, image_shape):
-	"""
-    Define y compila el modelo GAN combinando el generador y el discriminador.
-    
-    Parámetros:
-    - g_model: El modelo generador.
-    - d_model: El modelo discriminador.
-    - image_shape: La forma de la imagen de entrada.
-    
-    Retorna:
-    - model: El modelo GAN compilado.
-    """
-	# pesos del discriminador no se actualizan
+
 	for layer in d_model.layers:
 		if not isinstance(layer, BatchNormalization):
 			layer.trainable = False
 			
-	# Imagen de entrada
 	in_src = Input(shape=image_shape)
-	# imagen de entrada conectada al generador
 	gen_out = g_model(in_src)
-	# conectar la imagen de entrada y la salida del generador al discriminador
 	dis_out = d_model([in_src, gen_out])
 	
-	# imagen de entrada, salida del generador y salida del discriminador
 	model = Model(in_src, [dis_out, gen_out])
 	
-	# Model
 	opt = Adam(learning_rate=0.0002, beta_1=0.5) 
 	model.compile(loss='mae', optimizer=opt)
 	return model
 
 
 def load_real_samples(filename):
-	"""
-	Define y compila el modelo GAN combinando el generador y el discriminador.
 
-	Parámetros:
-	- filename: El nombre del archivo que contiene los datos de muestra reales.
-	
-	Retorna:
-	- samples: Una lista que contiene las muestras reales escaladas.
-	"""
 	data = load(filename)
 	X1, X2 = data['inputs_amplitud'], data['targets_amplitud']
 	
-	# Escala de [0,255] a [-1,1]
 	X1 = (X1 - 127.5) / 127.5
 	X2 = (X2 - 127.5) / 127.5
 	samples = [X1, X2]
@@ -232,25 +136,12 @@ def load_real_samples(filename):
 	return samples
 
 def generate_real_samples(dataset, n_samples, patch_shape):
-	"""
-	Genera un lote de muestras reales a partir del conjunto de datos.
-	
-	Parámetros:
-	- dataset: El conjunto de datos que contiene pares de imágenes (trainA, trainB).
-	- n_samples: Número de muestras a generar.
-	- patch_shape: La forma del parche para las etiquetas de clase.
-	
-	Retorna:
-	- [X1, X2]: Un par de arrays con las imágenes seleccionadas de trainA y trainB.
-	- y: Las etiquetas de clase 'reales' (1) para las muestras generadas.
-	"""
+
 	
 	trainA, trainB = dataset
-	# Elige instancias aleatorias
+
 	ix = randint(0, trainA.shape[0], n_samples)
-	# Recupera imágenes seleccionadas
 	X1, X2 = trainA[ix], trainB[ix]
-    # Genera etiquetas de clase reales - etiqueta 1
 	y = np.ones((n_samples, patch_shape, patch_shape, 1))
 	
 	return [X1, X2], y
@@ -259,73 +150,46 @@ def generate_real_samples(dataset, n_samples, patch_shape):
 
 def generate_fake_samples(g_model, samples, patch_shape):
 	
-    """
-    Genera un lote de imágenes falsas utilizando el modelo generador.
-    
-    Parámetros:
-    - g_model: El modelo generador que se utilizará para generar las imágenes falsas.
-    - samples: Las muestras de entrada para el modelo generador.
-    - patch_shape: La forma del parche para las etiquetas de clase.
-    
-    Retorna:
-    - X: Las imágenes falsas generadas por el modelo.
-    - y: Las etiquetas de clase 'falsas' (0) para las imágenes generadas.
-    """
+
     X = g_model.predict(samples)
-    #  # Crea etiquetas de clase falsas - etiqueta 0
     y = np.zeros((len(X), patch_shape, patch_shape, 1))
     return X, y
 
 
 def summarize_performance(step, g_model, dataset, n_samples=3):
-	"""
-    Resumen del rendimiento del modelo generador.
-    
-    - step: Paso de entrenamiento actual.
-    - g_model: Modelo generador.
-    - dataset: Conjunto de datos que contiene pares de  (realA, realB).
-    - n_samples: NÃºmero de muestras para generar y visualizar.
-    """
-    # Selecciona una muestra de  de entrada
+
 	[X_realA, X_realB], _ = generate_real_samples(dataset, n_samples, 1)
-	## Genera un lote de muestras falsas
 	X_fakeB, _ = generate_fake_samples(g_model, X_realA, 1)
-	# Escala de[-1,1] a [0,1]
 	X_realA = (X_realA + 1) / 2.0
 	X_realB = (X_realB + 1) / 2.0
 	X_fakeB = (X_fakeB + 1) / 2.0
-	# Grafica las  de entrada, 
 	for i in range(n_samples):
 		pyplot.subplot(3, n_samples, 1 + i)
 		pyplot.axis('off')
 		pyplot.title('Real A' if i == 0 else '')  
 		pyplot.imshow(X_realA[i])
-	# Grafica la imagen objetivo generada
 	for i in range(n_samples):
 		pyplot.subplot(3, n_samples, 1 + n_samples + i)
 		pyplot.axis('off')
 		pyplot.title('Fake B' if i == 0 else '')  
 		pyplot.imshow(X_fakeB[i])
-	# Grafica la imagen objetivo real
 	for i in range(n_samples):
 		pyplot.subplot(3, n_samples, 1 + n_samples*2 + i)
 		pyplot.axis('off')
 		pyplot.title('Real B' if i == 0 else '')
 		pyplot.imshow(X_realB[i])
 		
-    # Guarda la  en un archivo
-	filename1 = 'plot_NORMA2_%06d.png' % (step+1)
+	filename1 = 'plot_exp_%06d.png' % (step+1)
 	pyplot.savefig(filename1)
 	pyplot.close()
-	# save the generator model
-	filename2 = 'model_pix2pix_norma2_%06d.h5' % (step+1)
+	filename2 = 'model_pix2pix_exp_%06d.h5' % (step+1)
 	g_model.save(filename2)
 	print('>Saved: %s and %s' % (filename1, filename2))
 
 
 
 
-def train(d_model, g_model, gan_model, dataset, n_epochs=5, n_batch=1):
+def train(d_model, g_model, gan_model, dataset, n_epochs=90, n_batch=16):
     n_patch = d_model.output_shape[1]
     trainA, trainB = dataset
     bat_per_epo = int(len(trainA) / n_batch)
@@ -351,7 +215,7 @@ def train(d_model, g_model, gan_model, dataset, n_epochs=5, n_batch=1):
             current_epoch = (i + 1) // bat_per_epo
             print('Epoch %d, d_loss: %.3f, g_loss: %.3f' % (current_epoch, d_loss_epoch[-1], g_loss_epoch[-1]))
             
-            if current_epoch % 2 == 0:
+            if current_epoch % 10 == 0:
                 summarize_performance(current_epoch * bat_per_epo, g_model, dataset)
     
     plt.plot(d_loss_epoch, label='Discriminator Loss')
@@ -364,7 +228,7 @@ def train(d_model, g_model, gan_model, dataset, n_epochs=5, n_batch=1):
     plt.clf()
 
 
-dataset = load_real_samples('primer_dataset.npz')
+dataset = load_real_samples('data_combinado_final.npz')
 print('Loaded', dataset[0].shape, dataset[1].shape)
 image_shape = dataset[0].shape[1:]
 d_model = define_discriminator(image_shape)
@@ -372,8 +236,6 @@ g_model = define_generator(image_shape)
 gan_model = define_gan(g_model, d_model, image_shape)
 
 train(d_model, g_model, gan_model, dataset)
- #%%
-
 
 
 # %%
