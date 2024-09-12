@@ -88,12 +88,34 @@ def define_composite_model(g_model_1, d_model, g_model_2, image_shape):
     model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 5, 10, 10], optimizer=opt)
     return model
 
+
+def normalizar(tomo):
+
+    tomo_min = np.min(tomo)
+    tomo_max = np.max(tomo)
+    
+    normalizaso = (tomo - tomo_min) / (tomo_max - tomo_min)
+    
+    return normalizaso, tomo_min, tomo_max
+    
 def load_real_samples(filename):
     data = np.load(filename)
-    X1, X2 = data['train_dominio_1'], data['train_dominio_2']
-    X1 = (X1 - 127.5) / 127.5
-    X2 = (X2 - 127.5) / 127.5
-    return [X1, X2]
+    
+    x1 = data['inputs_amplitud']
+    y1 = data['targets_amplitud']
+    
+    x1_norma, x1_min, x1_max = normalizar(x1)
+    y1_norma, y1_min, y1_max = normalizar(y1)
+    
+    return x1_norma, y1_norma
+
+
+# def load_real_samples(filename):
+#     data = np.load(filename)
+#     X1, X2 = data['train_dominio_1'], data['train_dominio_2']
+#     X1 = (X1 - 127.5) / 127.5
+#     X2 = (X2 - 127.5) / 127.5
+#     return [X1, X2]
 
 def generate_real_samples(dataset, n_samples, patch_shape):
     ix = np.random.randint(0, dataset.shape[0], n_samples)

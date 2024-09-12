@@ -162,27 +162,25 @@ def define_gan(g_model, d_model, image_shape, L=0.05, M=0.15, N=0.8):
     return model
 
 
+def normalizar(tomo):
+
+    tomo_min = np.min(tomo)
+    tomo_max = np.max(tomo)
+    
+    normalizaso = (tomo - tomo_min) / (tomo_max - tomo_min)
+    
+    return normalizaso, tomo_min, tomo_max
+    
 def load_real_samples(filename):
-
-	data = load(filename)
-	X1, X2 = data['inputs_amplitud'], data['targets_amplitud']
-	
-	X1 = (X1 - 127.5) / 127.5
-	X2 = (X2 - 127.5) / 127.5
-	samples = [X1, X2]
-	
-	return samples
-
-def generate_real_samples(dataset, n_samples, patch_shape):
-
-	
-	trainA, trainB = dataset
-
-	ix = randint(0, trainA.shape[0], n_samples)
-	X1, X2 = trainA[ix], trainB[ix]
-	y = np.ones((n_samples, patch_shape, patch_shape, 1))
-	
-	return [X1, X2], y
+    data = np.load(filename)
+    
+    x1 = data['inputs_amplitud']
+    y1 = data['targets_amplitud']
+    
+    x1_norma, x1_min, x1_max = normalizar(x1)
+    y1_norma, y1_min, y1_max = normalizar(y1)
+    
+    return x1_norma, y1_norma
 
 
 

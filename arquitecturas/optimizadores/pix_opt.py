@@ -6,7 +6,7 @@ from keras.preprocessing.image import img_to_array, load_img
 from tensorflow.keras.layers import Input, MaxPooling2D
 from keras.initializers import RandomNormal
 from matplotlib import pyplot as pyplots
-from keras.optimizers import Adam
+from keras.optimizers import Adam, RMSprop, SGD
 from numpy.random import randint
 import matplotlib.pyplot as pyplot
 from keras.models import Model
@@ -139,17 +139,26 @@ def define_gan(g_model, d_model, image_shape, optimizer):
     return model
 
 
+def normalizar(tomo):
 
+    tomo_min = np.min(tomo)
+    tomo_max = np.max(tomo)
+    
+    normalizaso = (tomo - tomo_min) / (tomo_max - tomo_min)
+    
+    return normalizaso, tomo_min, tomo_max
+    
 def load_real_samples(filename):
+    data = load(filename)
+    
+    x1 = data['inputs_amplitud']
+    y1 = data['targets_amplitud']
+    
+    x1_norma, x1_min, x1_max = normalizar(x1)
+    y1_norma, y1_min, y1_max = normalizar(y1)
+    
+    return x1_norma, y1_norma
 
-	data = load(filename)
-	X1, X2 = data['inputs_amplitud'], data['targets_amplitud']
-	
-	X1 = (X1 - 127.5) / 127.5
-	X2 = (X2 - 127.5) / 127.5
-	samples = [X1, X2]
-	
-	return samples
 
 def generate_real_samples(dataset, n_samples, patch_shape):
 
@@ -243,19 +252,8 @@ def train(d_model, g_model, gan_model, dataset, optimizer_name='adam', n_epochs=
     plt.clf()
 
 
-# dataset = load_real_samples('data_combinado_final.npz')
-# print('Loaded', dataset[0].shape, dataset[1].shape)
-# image_shape = dataset[0].shape[1:]
-# d_model = define_discriminator(image_shape)
-# g_model = define_generator(image_shape)
-# gan_model = define_gan(g_model, d_model, image_shape)
-
-# train(d_model, g_model, gan_model, dataset)
-
-
 #%%
 
-from keras.optimizers import RMSprop, SGD
 
 optimizers = {
     'adam': Adam(learning_rate=0.0002, beta_1=0.5),
@@ -274,8 +272,6 @@ for opt_name, optimizer in optimizers.items():
     gan_model = define_gan(g_model, d_model, image_shape, optimizer)
 
     train(d_model, g_model, gan_model, dataset, optimizer_name=opt_name)
-
-
 
 
 # %%
