@@ -4,7 +4,9 @@ Este repositorio contiene las arquitecturas de redes neuronales propuestas y el 
 
 ## Contenidos
 - **Base de datos**:
-- **Preprocesamiento de Datos**: Scripts y métodos utilizados para preparar la base de datos antes de su uso en el entrenamiento de los modelos.
+![alt text](image.png)
+
+- **Preprocesamiento de Datos**: Scripts utilizados para preparar la base de datos antes de su uso en el entrenamiento de los modelos.
 - **Arquitecturas de Redes Neuronales**: Directorio con los modelos de redes neuronales diseñados para la eliminación de la imagen espejo en FD-OCT.
 - 
 ## Descripción del Proyecto
